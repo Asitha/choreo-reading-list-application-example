@@ -1,1 +1,1 @@
-# choreo-reading-list-application-example
+# Choreo Reading List Application Example
