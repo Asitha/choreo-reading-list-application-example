@@ -2,15 +2,15 @@ import ballerina/uuid;
 import ballerina/http;
 
 enum Status {
-    reading,
-    read,
-    to_read
+    reading = "reading",
+    read = "read",
+    to_read = "to_read"
 }
 
 type BookItem record {|
-    string name;
+    string title;
     string author;
-    Status status;
+    string status;
 |};
 
 type Book record {|
