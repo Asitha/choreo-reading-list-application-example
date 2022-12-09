@@ -1,5 +1,6 @@
 import ballerina/uuid;
 import ballerina/http;
+import ballerina/jwt;
 
 import ballerina/sql;
 import ballerinax/mysql;
@@ -34,28 +35,40 @@ user = dbUser, password = dbPassword, database = dbName, port = dbPort);
 
 service /readinglist on new http:Listener(9090) {
 
-    resource function get books() returns Book[]|error? {
-        stream<Book, sql:Error?> resultStream = mysqlClient->query(`SELECT id,title,author,status FROM reading_list`);
-        Book[]|sql:Error? BooksOrError = check from var result in resultStream select result;
-        if BooksOrError is Book[] {
-            return BooksOrError;
+    resource function get books(@http:Header string x\-jwt\-assertion) returns Book[]|error? {
+        string? userId = check getUserId(x\-jwt\-assertion);
+        if (userId is string) {
+            stream<Book, sql:Error?> resultStream =
+                            mysqlClient->query(`SELECT id,title,author,status FROM reading_list where listId=${userId}`);
+            Book[]|sql:Error? BooksOrError = check from var result in resultStream
+                select result;
+            if BooksOrError is Book[] {
+                return BooksOrError;
+            } else {
+                string msg = string `Error retrieving books`;
+                log:printError(msg, BooksOrError);
+                return error(msg);
+            }
         } else {
-            string msg = string `Error retrieving books`;
-            log:printError(msg, BooksOrError);
-            return error(msg);
+            return error("User is not set for the request");
         }
     }
 
-    resource function post books(@http:Payload BookItem newBook) returns record {|*http:Ok;|}|error? {
+    resource function post books(@http:Header string x\-jwt\-assertion, @http:Payload BookItem newBook) returns record {|*http:Ok;|}|error? {
         string bookId = uuid:createType1AsString();
-        sql:ExecutionResult|sql:Error res = mysqlClient->execute(`INSERT INTO reading_list (id, title, author, status) 
-                    VALUES (${bookId}, ${newBook.title}, ${newBook.author}, ${newBook.status})`);
-        if (res is sql:Error) {
-            string msg = string `Failed to add the book ${newBook.title}`;
-            log:printError(msg, res);
-            return error(msg);
+        string? userId = check getUserId(x\-jwt\-assertion);
+        if (userId is string) {
+            sql:ExecutionResult|sql:Error res = mysqlClient->execute(`INSERT INTO reading_list (id, title, author, status, listId) 
+                    VALUES (${bookId}, ${newBook.title}, ${newBook.author}, ${newBook.status}, ${x\-jwt\-assertion})`);
+            if (res is sql:Error) {
+                string msg = string `Failed to add the book ${newBook.title}`;
+                log:printError(msg, res);
+                return error(msg);
+            }
+            return {};
+        } else {
+            return error("User is not set for the request");
         }
-        return {};
     }
 
     resource function delete books(string id) returns record {|*http:Ok;|}|error? {
@@ -67,4 +80,9 @@ service /readinglist on new http:Listener(9090) {
         }
         return {};
     }
+}
+
+function getUserId(string encodedJwt) returns string?|error {
+    [jwt:Header, jwt:Payload] [_, payload] = check jwt:decode(encodedJwt);
+    return payload.sub;
 }
