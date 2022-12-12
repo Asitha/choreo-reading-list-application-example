@@ -28,7 +28,7 @@ export default function AddItem(props: AddItemProps) {
     async function setBooks() {
       const accessToken = await getAccessToken();
       const payload: Book = {
-        name: name,
+        title: name,
         author: author,
         status: status.name,
       };
