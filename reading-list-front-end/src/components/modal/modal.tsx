@@ -53,7 +53,7 @@ export default function Modal(props: ModalProps) {
                   {title}
                 </Dialog.Title>
                 {children}
-                <div className="mt-4">
+                <div className="mt-12">
                   <button
                     type="button"
                     className={
