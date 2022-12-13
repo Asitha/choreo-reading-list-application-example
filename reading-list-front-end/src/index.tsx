@@ -7,8 +7,7 @@ import AddItem from "./components/modal/fragments/add-item";
 import { deleteBooks } from "./api/books/delete-books";
 import { BasicUserInfo, useAuthContext } from "@asgardeo/auth-react";
 import { Dictionary } from "lodash";
-import { ArrowPathIcon, ArrowUpOnSquareIcon } from "@heroicons/react/24/solid";
-import ShareList from "./components/modal/fragments/share-list";
+import { ArrowPathIcon } from "@heroicons/react/24/solid";
 
 export function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
@@ -17,17 +16,27 @@ export function classNames(...classes: string[]) {
 export default function App() {
   const [readList, setReadList] = useState<Dictionary<Book[]> | null>(null);
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
-  const [isShareListOpen, setIsShareListOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signOut, getAccessToken, isAuthenticated, getBasicUserInfo } =
-    useAuthContext();
+  const {
+    signIn,
+    signOut,
+    getAccessToken,
+    isAuthenticated,
+    getBasicUserInfo,
+    state,
+  } = useAuthContext();
   const [signedIn, setSignedIn] = useState(false);
   const [user, setUser] = useState<BasicUserInfo | null>(null);
 
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
   useEffect(() => {
     async function signInCheck() {
+      setIsLoading(true);
+      await sleep(2000);
       const isSignedIn = await isAuthenticated();
       setSignedIn(isSignedIn);
+      setIsLoading(false);
       return isSignedIn;
     }
     signInCheck().then((res) => {
@@ -48,17 +57,19 @@ export default function App() {
   }
 
   async function getReadingList() {
-    setIsLoading(true);
-    const accessToken = await getAccessToken();
-    getBooks(accessToken)
-      .then((res) => {
-        const grouped = groupBy(res.data, (item) => item.status);
-        setReadList(grouped);
-        setIsLoading(false);
-      })
-      .catch((e) => {
-        console.log(e);
-      });
+    if (signedIn) {
+      setIsLoading(true);
+      const accessToken = await getAccessToken();
+      getBooks(accessToken)
+        .then((res) => {
+          const grouped = groupBy(res.data, (item) => item.status);
+          setReadList(grouped);
+          setIsLoading(false);
+        })
+        .catch((e) => {
+          console.log(e);
+        });
+    }
   }
 
   useEffect(() => {
@@ -75,11 +86,26 @@ export default function App() {
     setIsLoading(false);
   };
 
+  const hanldeSignIn = async () => {
+    signIn()
+      .then(() => {
+        alert("sign in");
+        setSignedIn(true);
+      })
+      .catch((e) => {
+        console.log(e);
+      });
+  };
+
+  if (isLoading) {
+    return <div className="animate-spin h-5 w-5 text-white">.</div>;
+  }
+
   if (!signedIn) {
     return (
       <button
         className="float-right bg-black bg-opacity-20 p-2 rounded-md text-sm my-3 font-medium text-white"
-        onClick={() => signIn()}
+        onClick={hanldeSignIn}
       >
         Login
       </button>
@@ -135,12 +161,6 @@ export default function App() {
                   onClick={() => getReadingList()}
                 >
                   <ArrowPathIcon />
-                </button>
-                <button
-                  className="float-right bg-black bg-opacity-20 p-2 rounded-md text-sm my-3 font-medium text-white w-10 h-10 mr-1"
-                  onClick={() => setIsShareListOpen(true)}
-                >
-                  <ArrowUpOnSquareIcon />
                 </button>
               </div>
             </div>
@@ -209,10 +229,6 @@ export default function App() {
               </Tab.Group>
             )}
             <AddItem isOpen={isAddItemOpen} setIsOpen={setIsAddItemOpen} />
-            <ShareList
-              isOpen={isShareListOpen}
-              setIsOpen={setIsShareListOpen}
-            />
           </div>
         </div>
       </div>
