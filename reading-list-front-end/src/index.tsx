@@ -25,6 +25,7 @@ export default function App() {
     getBasicUserInfo,
     state,
   } = useAuthContext();
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   const [user, setUser] = useState<BasicUserInfo | null>(null);
 
@@ -32,11 +33,11 @@ export default function App() {
 
   useEffect(() => {
     async function signInCheck() {
-      setIsLoading(true);
+      setIsAuthLoading(true);
       await sleep(2000);
       const isSignedIn = await isAuthenticated();
       setSignedIn(isSignedIn);
-      setIsLoading(false);
+      setIsAuthLoading(false);
       return isSignedIn;
     }
     signInCheck().then((res) => {
@@ -89,7 +90,6 @@ export default function App() {
   const hanldeSignIn = async () => {
     signIn()
       .then(() => {
-        alert("sign in");
         setSignedIn(true);
       })
       .catch((e) => {
@@ -97,7 +97,7 @@ export default function App() {
       });
   };
 
-  if (isLoading) {
+  if (isAuthLoading) {
     return <div className="animate-spin h-5 w-5 text-white">.</div>;
   }
 

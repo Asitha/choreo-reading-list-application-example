@@ -34,7 +34,6 @@ export default function AddItem(props: AddItemProps) {
       };
       const response = await postBooks(accessToken, payload);
       setIsOpen(false);
-      console.log(response);
     }
     setBooks();
   };
